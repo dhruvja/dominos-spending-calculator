@@ -7,7 +7,7 @@ const spinner = require("../public/loading-buffering.gif");
 
 const Popup = () => {
   const [currentURL, setCurrentURL] = useState<string>();
-  const [isZomatoHomeOpen, setIsZomatoHomeOpen] = useState<boolean>(false);
+  const [isDominosHomeOpen, setIsDominosHomeOpen] = useState<boolean>(false);
   const [isSignedIn, setIsSignedIn] = useState<boolean>(false);
   const [totalCost, setTotalCost] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -28,8 +28,8 @@ const Popup = () => {
     if (currentURL) {
       const url = new URL(currentURL);
       if (url.hostname === "www.pizzaonline.dominos.co.in") {
-        if (url.pathname === "/") {
-          setIsZomatoHomeOpen(true);
+        if (url.pathname === "/menu") {
+          setIsDominosHomeOpen(true);
           chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             const currentTab = tabs[0];
             if (currentTab.id) {
@@ -63,9 +63,23 @@ const Popup = () => {
           setTotalOrder(results.quantity);
           setIsLoading(false);
           setIsError(false);
+          setIsSignedIn(true);
+          setIsDominosHomeOpen(true);
         } catch (err) {
+          chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+            if (tabs[0].url != "https://pizzaonline.dominos.co.in/orderHistory")
+              setIsDominosHomeOpen(false);
+            else 
+              setIsDominosHomeOpen(true);
+            console.log(tabs[0].url);
+          });
+          if (err == "TypeError: Cannot read properties of undefined (reading 'length')")
+            console.log("api error")
+          else 
+            console.log("first")
           setIsLoading(false);
           setIsError(true);
+          setIsSignedIn(false);
         }
       }
     );
@@ -81,8 +95,8 @@ const Popup = () => {
           </button>
         </div>
         {isOptionsOpen && <Options />}
-        {!isZomatoHomeOpen ? (
-          !isSignedIn ? (
+        {isDominosHomeOpen ? (
+          isSignedIn ? (
             <div className="info-body">
               <p className="webpage-info">Domino's Home is open</p>
               <p className="auth-info">
@@ -155,11 +169,11 @@ const Popup = () => {
           )
         ) : (
           <div className="info-body">
-            <p className="webpage-info">Domino's Homepage is not open</p>
+            <p className="webpage-info">Domino's Order Page is not open</p>
             <p className="webpage-redirect">
               Open{" "}
               <a
-                href="https://www.pizzaonline.dominos.co.in/orderHistory"
+                href="https://pizzaonline.dominos.co.in/orderHistory"
                 target="_blank"
               >
                 www.Domino's.com

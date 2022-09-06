@@ -6,6 +6,11 @@ export const makeApiCalls = async (cookies: chrome.cookies.Cookie[]) => {
     });
 
     let userInfo = JSON.parse(decodeURIComponent(cookieMap.userInfo));
+
+    if (!userInfo.headers.isLoggedIn){
+        throw new Error("User not logged in"); 
+    }
+
     console.log(userInfo.headers.credentials.accessKeyId);
     console.log(cookieMap.userId);
     let userId = cookieMap.userId;
