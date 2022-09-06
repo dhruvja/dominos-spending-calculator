@@ -16,19 +16,32 @@ export const makeApiCalls = async (cookies: chrome.cookies.Cookie[]) => {
     const requestOptions: RequestInit = {
       method: "GET",
       headers: myHeaders,
-      redirect: "follow",
+      redirect: "follow"
     };
 
     let total = 0;
-    const response = await fetchWrrapper(
-      `https://api.dominos.co.in/order-service/ve1/orders?userId=${userId}`,
-      requestOptions
-    );
-    const data = JSON.parse(response);
-    data.orders.forEach((rows: { netPrice: number }) => {
-      total += rows.netPrice;
-    });
-    return total;
+    let number = 0;
+    let quantity = 0;
+    while(1) {
+        const response = await fetchWrrapper(
+            `https://api.dominos.co.in/order-service/ve1/orders?size=50&number=${number}`,
+            requestOptions
+          );
+          const data = JSON.parse(response);
+          
+          quantity += data.orders.length;
+          data.orders.forEach((rows: { netPrice: number }) => {
+            total += rows.netPrice;
+          });
+          if ("link" in data) {
+            number++;
+          }
+          else {
+            break;
+          }
+    }
+   
+    return {total, quantity};
   } catch (e) {
     console.log(e);
     throw new Error("Error while making api calls to zomato");

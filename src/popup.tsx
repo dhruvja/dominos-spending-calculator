@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 import { makeApiCalls } from "./api";
 import { Options } from "./options";
 import "./popup.scss";
-const spinner = require('../public/loading-buffering.gif');
+const spinner = require("../public/loading-buffering.gif");
 
 const Popup = () => {
   const [currentURL, setCurrentURL] = useState<string>();
@@ -13,6 +13,8 @@ const Popup = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState<boolean>(false);
   const [isError, setIsError] = useState<boolean>(false);
+  const [averageOrder, setAverageOrder] = useState<string>();
+  const [totalOrder, setTotalOrder] = useState<number>(0);
 
   useEffect(() => {
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
@@ -31,61 +33,139 @@ const Popup = () => {
           chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             const currentTab = tabs[0];
             if (currentTab.id) {
-              chrome.tabs.sendMessage(currentTab.id, { type: "getAuthStatus" }, (response) => {
-                setIsSignedIn(response.isLoggedIn);
-              });
+              chrome.tabs.sendMessage(
+                currentTab.id,
+                { type: "getAuthStatus" },
+                (response) => {
+                  setIsSignedIn(response.isLoggedIn);
+                }
+              );
               getCookies();
             }
-
           });
         }
       }
     }
-
   }, [currentURL]);
 
   const getCookies = () => {
-    chrome.cookies.getAll({ url: "https://pizzaonline.dominos.co.in"}, async (cookies) => {
-      console.log(cookies);
-      setIsLoading(true);
-      try {
-        const results = await makeApiCalls(cookies);
-        console.log(results)
-        setTotalCost(results);
-        setIsLoading(false);
-        setIsError(false);
+    chrome.cookies.getAll(
+      { url: "https://pizzaonline.dominos.co.in" },
+      async (cookies) => {
+        console.log(cookies);
+        setIsLoading(true);
+        try {
+          const results = await makeApiCalls(cookies);
+          console.log(results.total);
+          setTotalCost(results.total);
+          const avg = (results.total / results.quantity).toFixed(1);
+          setAverageOrder(avg);
+          setTotalOrder(results.quantity);
+          setIsLoading(false);
+          setIsError(false);
+        } catch (err) {
+          setIsLoading(false);
+          setIsError(true);
+        }
       }
-      catch (err) {
-        setIsLoading(false);
-        setIsError(true);
-      }
-    });
-  }
+    );
+  };
 
   return (
     <>
       <div className="popup-body">
-        <div className="popup-header">
-          Domino's Spending Calculator
-        </div>
+        <div className="popup-header">Domino's Spending Calculator</div>
         <div className="option-button">
-          <button onClick={() => setIsOptionsOpen(!isOptionsOpen)}>{isOptionsOpen ? "Hide Options" : "Show Options"}</button>
+          <button onClick={() => setIsOptionsOpen(!isOptionsOpen)}>
+            {isOptionsOpen ? "Hide Options" : "Show Options"}
+          </button>
         </div>
         {isOptionsOpen && <Options />}
-        {!isZomatoHomeOpen ? (!isSignedIn ? (<div className="info-body">
-          <p className="webpage-info">Domino's Home is open</p>
-          <p className="auth-info"> You are currently Signed In to Domino's Website</p>
-          {isError && <p className="error">Error while fetching data</p>}
-          <p className="amount-info">Total Amount Spent : <b>{isLoading ? <><img src={String(spinner)} alt="loading..." height="20px" width="20px" /> <span>(Fetching Data....)</span> </> : `₹${totalCost}`}</b></p>
-        </div>) : (
-          <div className="info-body">
-            <p className="webpage-info">Domino's Home is open</p>
-            <p className="auth-info">You are not signed in , please sign in to Domino's to continue.</p>
-          </div>)
+        {!isZomatoHomeOpen ? (
+          !isSignedIn ? (
+            <div className="info-body">
+              <p className="webpage-info">Domino's Home is open</p>
+              <p className="auth-info">
+                {" "}
+                You are currently Signed In to Domino's Website
+              </p>
+              {isError && <p className="error">Error while fetching data</p>}
+              <p className="amount-info">
+                Total Amount Spent :{" "}
+                <b>
+                  {isLoading ? (
+                    <>
+                      <img
+                        src={String(spinner)}
+                        alt="loading..."
+                        height="20px"
+                        width="20px"
+                      />{" "}
+                      <span>(Fetching Data....)</span>{" "}
+                    </>
+                  ) : (
+                    `₹${totalCost}`
+                  )}
+                </b>
+              </p>
+              <p className="auth-info">
+                Average Amount Per Order :{" "}
+                <b>
+                  {isLoading ? (
+                    <>
+                      <img
+                        src={String(spinner)}
+                        alt="loading..."
+                        height="20px"
+                        width="20px"
+                      />{" "}
+                      <span>(Fetching Data....)</span>{" "}
+                    </>
+                  ) : (
+                    `₹${averageOrder}`
+                  )}
+                </b>
+              </p>
+              <p className="webpage-info">
+                Total Orders :{" "}
+                <b>
+                  {isLoading ? (
+                    <>
+                      <img
+                        src={String(spinner)}
+                        alt="loading..."
+                        height="20px"
+                        width="20px"
+                      />{" "}
+                      <span>(Fetching Data....)</span>{" "}
+                    </>
+                  ) : (
+                    `${totalOrder}`
+                  )}
+                </b>
+              </p>
+            </div>
+          ) : (
+            <div className="info-body">
+              <p className="webpage-info">Domino's Home is open</p>
+              <p className="auth-info">
+                You are not signed in , please sign in to Domino's to continue.
+              </p>
+            </div>
+          )
         ) : (
           <div className="info-body">
             <p className="webpage-info">Domino's Homepage is not open</p>
-            <p className="webpage-redirect">Open <a href="https://www.pizzaonline.dominos.co.in/orderHistory" target="_blank">www.Domino's.com</a> on your browser, then use this extension</p>
+            <p className="webpage-redirect">
+              Open{" "}
+              <a
+                href="https://www.pizzaonline.dominos.co.in/orderHistory"
+                target="_blank"
+              >
+                www.Domino's.com
+              </a>{" "}
+              on your browser, then use this extension
+            </p>
           </div>
         )}
       </div>
